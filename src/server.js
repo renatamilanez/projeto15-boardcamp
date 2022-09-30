@@ -26,14 +26,21 @@ const gameSchema = Joi.object({
   image: Joi.string().required(),
 });
 
+const customerSchema = Joi.object({
+  name: Joi.string().required(),
+  phone: Joi.string().min(10).max(11).pattern(/^[0-9]+$/).required(),
+  cpf: Joi.string().length(11).pattern(/^[0-9]+$/).required(),
+  birthday: Joi.date().required()
+});
+
 //ROTA PRONTA E VERIFICADA
 server.get('/categories', async (req, res) => {
   try {
     const categories = await connection.query('SELECT * FROM categories;');
-    res.send(categories.rows);
+    return res.send(categories.rows);
   } catch (error) {
     console.error(error);
-    res.sendStatus(500);
+    return res.sendStatus(500);
   }
 });
 
@@ -46,8 +53,7 @@ server.post('/categories', async (req, res) => {
 
     if(validation.error){
         const errors = validation.error.details.map(detail => detail.message);
-        res.status(400).send(errors);
-        return;
+        return res.status(400).send(errors);
     }
   
     const duplicate = await connection.query(
@@ -56,18 +62,17 @@ server.post('/categories', async (req, res) => {
     );
   
     if(duplicate.rows.length > 0){
-      res.sendStatus(409);
-      return
+      return res.sendStatus(409);
     }
   
     await connection.query(
       'INSERT INTO categories (name) VALUES ($1);',
       [name]
     );
-    res.sendStatus(201);
+    return res.sendStatus(201);
   } catch (error) {
     console.error(error);
-    res.sendStatus(500);
+    return res.sendStatus(500);
   }
 });
 
@@ -75,10 +80,10 @@ server.post('/categories', async (req, res) => {
 server.get('/games', async (req, res) => {
   try {
     const games = await connection.query('SELECT games.*, categories.name AS "categoryName" FROM games JOIN categories ON "categoryId" = categories.id;');
-    res.send(games.rows);
+    return res.send(games.rows);
   } catch (error) {
     console.error(error);
-    res.sendStatus(500);
+    return res.sendStatus(500);
   }
 });
 
@@ -109,8 +114,7 @@ server.post('/games', async (req, res) => {
     );
 
     if(nameDuplicated.rows.length > 0){
-      res.sendStatus(409);
-      return
+      return res.sendStatus(409);
     };
 
     const hasCategory = await connection.query(
@@ -119,18 +123,100 @@ server.post('/games', async (req, res) => {
     );
 
     if(hasCategory.rows.length === 0){
-      res.sendStatus(400);
-      return
+      return res.sendStatus(400);
     };
 
     const game = await connection.query(
       'INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5);',
       [name, image, stockTotal, categoryId, pricePerDay]
     );
-    res.sendStatus(201);
+    return res.sendStatus(201);
   } catch (error) {
     console.error(error);
-    res.sendStatus(500);
+    return res.sendStatus(500);
+  }
+});
+
+//todos pronta, falta testar com cpf
+server.get('/customers?cpf', async (req,res) => {
+  const cpf = req.query.cpf;
+
+  try {
+    if(!cpf){
+      const customers = await connection.query(
+        'SELECT * FROM customers;'
+      );
+      return res.send(customers.rows);
+    } if (cpf){
+      const customers = await connection.query(
+        'SELECT * FROM customers;'
+      );
+      return res.send(customers.rows);
+    }
+  } catch (error) {
+    console.error(error);
+    return res.sendStatus(500);
+  }
+});
+
+//pronta e testada
+server.get('/customers/:id', async (req,res) => {
+  const id = req.params.id;
+  console.log(id)
+  try {
+    if(id){
+      const customers = await connection.query(
+        'SELECT * FROM customers WHERE id = $1;',
+        [id]
+      );
+  
+      if(customers.rows.length === 0){
+        return res.sendStatus(404);
+      };
+      return res.send(customers.rows[0]);
+    }
+  } catch (error) {
+    console.error(error);
+    return res.sendStatus(500);
+  }
+});
+
+//pronta e verificada
+server.post('/customers', async (req, res) => {
+  let {name, phone, cpf, birthday} = req.body;
+  name = stripHtml(name).result.trim();
+  cpf = stripHtml(cpf).result.trim();
+  phone = stripHtml(phone).result.trim();
+
+  try {
+    const validation = customerSchema.validate({
+      name, 
+      phone, 
+      cpf, 
+      birthday
+    }, {abortEarly: false});
+
+    if(validation.error){
+      const errors = validation.error.details.map(detail => detail.message);
+      return res.status(400).send(errors);
+    }
+
+    const cpfDuplicated = await connection.query(
+      'SELECT cpf FROM customers WHERE cpf = $1', 
+      [cpf]
+    );
+
+    if(cpfDuplicated.rows.length > 0){
+      return res.sendStatus(409);
+    }
+
+    const customer = await connection.query(
+      'INSERT INTO customers (name, phone, cpf, birthday) VALUES ($1, $2, $3, $4);',
+    [name, phone, cpf, birthday]
+    );
+    return res.sendStatus(201);
+  } catch (error) {
+    
   }
 });
 
