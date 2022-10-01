@@ -38,7 +38,7 @@ async function postCategory (req, res){
       );
       return res.sendStatus(201);
     } catch (error) {
-      console.error(error);
+      error(error);
       return res.sendStatus(500);
     }
 }

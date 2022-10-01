@@ -56,7 +56,6 @@ async function postCustomer(req, res) {
     cpf = stripHtml(cpf).result.trim();
     phone = stripHtml(phone).result.trim();
   
-    console.log(birthday)
   
     try {
       const validation = customerSchema.validate({
@@ -93,7 +92,6 @@ async function postCustomer(req, res) {
 
 async function putCustomer(req, res) {
     const id = req.params.id;
-    console.log(id)
     let {name, phone, cpf, birthday} = req.body;
     name = stripHtml(name).result.trim();
     cpf = stripHtml(cpf).result.trim();
